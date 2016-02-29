@@ -1,3 +1,4 @@
+require 'ostruct'
 require 'ooor/rack'
 require 'erpify'
 require 'locomotive/steam'
@@ -22,8 +23,36 @@ module Exodoo
     end
   end
 
-
   Locomotive::Steam.configuration.middleware.insert_before Locomotive::Steam::Middlewares::Page, Exodoo::Middleware
+
+
+  module ContentEntryAdapter
+    def content_type
+      locale = Locomotive::Mounter.locale.to_s
+      context = {'lang' => to_erp_locale(locale)}
+      @content_type ||= OpenStruct.new(slug: self.class.param_key(context))
+    end
+
+    def content_entry
+      self
+    end
+
+    def _slug
+      to_param
+    end
+
+    def _permalink
+      to_param
+    end
+
+    def _label
+      _display_name
+    end
+
+    # TODO next, previous, seo_title, meta_keywords, meta_description, created_at
+  end
+
+  Ooor::Base.send :include, Exodoo::ContentEntryAdapter
 
 
   begin
