@@ -24,14 +24,14 @@ module Exodoo
 
 
   Locomotive::Steam.configuration.middleware.insert_before Locomotive::Steam::Middlewares::Page, Exodoo::Middleware
-end
 
 
-begin
-  config_file = "#{Dir.pwd}/config/ooor.yml"
-  config = YAML.load_file(config_file)['development']
-  Ooor.default_config = HashWithIndifferentAccess.new(config).merge(locale_rack_key: 'steam.locale')
-rescue SystemCallError
-  puts """failed to load OOOR yaml configuration file.
+  begin
+    config_file = "#{Dir.pwd}/config/ooor.yml"
+    config = YAML.load_file(config_file)['development']
+    Ooor.default_config = HashWithIndifferentAccess.new(config).merge(locale_rack_key: 'steam.locale')
+  rescue SystemCallError
+    puts """failed to load OOOR yaml configuration file.
        make sure your app has a #{config_file} file correctly set up\n\n"""
+  end
 end
