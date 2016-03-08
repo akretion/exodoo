@@ -12,9 +12,10 @@ module Exodoo
 
 
   class Middleware <  Locomotive::Steam::Middlewares::ThreadSafe
+    include Ooor::RackBehaviour
+
     def _call
-      ooor_rack = Ooor::Rack.new(@app)
-      ooor_rack.set_ooor!(env)
+      set_ooor!(env)
       erpify_assigns = {
                           "ooor_public_model" => Erpify::Liquid::Drops::OoorDefaultModel.new(),
                           "ooor_model" => Erpify::Liquid::Drops::OoorDefaultModel.new(), #no authentication in Wagon
@@ -23,13 +24,15 @@ module Exodoo
     end
   end
 
-  Locomotive::Steam.configuration.middleware.insert_before Locomotive::Steam::Middlewares::Page, Exodoo::Middleware
+  Locomotive::Steam.configure do |config|
+    config.middleware.insert_before Locomotive::Steam::Middlewares::Page, Exodoo::Middleware
+  end
 
 
   module ContentEntryAdapter
     def content_type
-      locale = Locomotive::Mounter.locale.to_s
-      context = {'lang' => to_erp_locale(locale)}
+      #locale = Locomotive::Mounter.locale.to_s
+      context = {'lang' => 'en_US'} #to_erp_locale(locale)}
       @content_type ||= OpenStruct.new(slug: self.class.param_key(context))
     end
 
@@ -62,5 +65,29 @@ module Exodoo
   rescue SystemCallError
     puts """failed to load OOOR yaml configuration file.
        make sure your app has a #{config_file} file correctly set up\n\n"""
+  end
+end
+
+
+module Locomotive::Steam
+  module Middlewares
+    class TemplatizedPage
+
+      # monkey patches the method to retrieve a potential Ooor content for the given URL path
+      def fetch_content_entry(slug)
+        if page.content_type_id == "ooor_entries"
+          method_or_key = path.split('/')[0].gsub('-', '.')
+          lang = env['ooor']['context']['lang'] || 'en_US'
+          model = Ooor.session_handler.retrieve_session(Ooor.default_config).const_get(method_or_key, lang)
+          param = CGI::unescape(slug)
+          model.find_by_permalink(param)
+        elsif type = content_type_repository.find(page.content_type_id)
+          decorate(content_entry_repository.with(type).by_slug(slug))
+        else
+          nil
+        end
+      end
+
+    end
   end
 end
