@@ -3,7 +3,6 @@ require 'ooor/rack'
 require 'erpify'
 require 'locomotive/steam'
 
-
 module Exodoo
 
   require 'locomotive/steam'
@@ -41,7 +40,7 @@ module Exodoo
     end
 
     def _slug
-      to_param
+      CGI.escape(to_param.gsub(' ', '-'))
     end
 
     def _permalink
@@ -53,6 +52,11 @@ module Exodoo
     end
 
     # TODO next, previous, seo_title, meta_keywords, meta_description, created_at
+
+
+    def __with_locale__(locale, &block)
+      yield
+    end
   end
 
   Ooor::Base.send :include, Exodoo::ContentEntryAdapter
@@ -80,8 +84,7 @@ module Locomotive::Steam
           lang = env['ooor']['context']['lang'] || 'en_US'
           model = Ooor.session_handler.retrieve_session(Ooor.default_config).const_get(method_or_key, lang)
           param = CGI::unescape(slug)
-          model.find_by_permalink(param)
-        elsif type = content_type_repository.find(page.content_type_id)
+          model.find_by_permalink(param)        elsif type = content_type_repository.find(page.content_type_id)
           decorate(content_entry_repository.with(type).by_slug(slug))
         else
           nil
