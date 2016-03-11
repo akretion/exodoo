@@ -2,6 +2,7 @@ require 'ostruct'
 require 'ooor/rack'
 require 'erpify'
 require 'locomotive/steam'
+require 'rack/reverse_proxy'
 
 module Exodoo
 
@@ -25,6 +26,11 @@ module Exodoo
 
   Locomotive::Steam.configure do |config|
     config.middleware.insert_before Locomotive::Steam::Middlewares::Page, Exodoo::Middleware
+    config.middleware.insert_before Rack::Rewrite, Rack::ReverseProxy do
+      (Ooor.default_config[:proxies] || []).each do |k, v|
+        reverse_proxy(k, v)
+      end
+    end
   end
 
 
