@@ -80,7 +80,60 @@ end
 
 
 module Locomotive::Steam
+
+  class PageRepository
+    def template_for(entry, handle = nil)
+      conditions = { templatized: true, target_klass_name: entry.try(:_class_name) }
+
+      conditions[:handle] = handle if handle
+      unless conditions[:target_klass_name] # AKRETION; may be implementing _class_name on entries is better
+        conditions[:target_klass_name] = "Locomotive::ContentEntryooor_entries"
+      end
+      all(conditions).first.tap do |page|
+        page.content_entry = entry if page
+      end
+    end
+  end
+
+
+  module Liquid
+    module Tags
+      module Concerns
+        module Path
+          def retrieve_page_drop_from_handle
+            handle = @context[@handle] || @handle
+            case handle
+            when String
+              _retrieve_page_drop_from(handle)
+            when Locomotive::Steam::Liquid::Drops::ContentEntry
+              _retrieve_templatized_page_drop_from(handle)
+            when Ooor::Base
+              _retrieve_templatized_page_drop_from(handle)
+            when Locomotive::Steam::Liquid::Drops::Page
+              handle
+            else
+              nil
+            end
+          end
+
+          def _retrieve_templatized_page_drop_from(drop)
+            if drop.is_a?(Ooor::Base)
+              entry = drop
+            else
+              entry = drop.send(:_source)
+            end
+            if page = repository.template_for(entry, @path_options[:with])
+              page.to_liquid.tap { |d| d.context = @context }
+            end
+          end
+        end
+      end
+    end
+  end
+
+
   module Middlewares
+
     class TemplatizedPage
 
       # monkey patches the method to retrieve a potential Ooor content for the given URL path
