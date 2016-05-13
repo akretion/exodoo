@@ -33,7 +33,7 @@ Gem::Specification.new do |s|
   s.rubygems_version = "1.8.24"
 
   s.add_dependency(%q<erpify>, [">= 0"])
-  s.add_dependency(%q<locomotivecms_steam>, [">= 0"])
+  s.add_dependency(%q<locomotivecms_steam>, ['~> 1.1.0'])
   s.add_dependency(%q<rack-reverse-proxy>, [">=0"])
 end
 
