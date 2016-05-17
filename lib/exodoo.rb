@@ -4,35 +4,34 @@ require 'erpify'
 require 'locomotive/steam'
 require 'rack/reverse_proxy'
 
+
 module Exodoo
 
   require 'locomotive/steam'
   require 'locomotive/steam/middlewares'
   require 'locomotive/steam/server'
 
-  module SiteSession
-    def get_session_spec(site)
-      session_conf = {}
-      if ooor_site_conf = site.metafields[:ooor]
-        session_conf[:url] = ooor_site_conf[:url] if ooor_site_conf[:url]
-        session_conf[:username] = ooor_site_conf[:username] if ooor_site_conf[:username]
-        session_conf[:password] = ooor_site_conf[:password] if ooor_site_conf[:password]
-        session_conf[:database] = ooor_site_conf[:database] if ooor_site_conf[:database]
-      end
-      Ooor.default_config.merge(session_conf)
-    end
+
+  ::Ooor::Rack.ooor_session_config_mapper do |env|
+    site = env['steam.site']
+    site.metafields[:ooor].compact  || {} # TODO Devise auth
+  end
+  
+  ::Ooor::Rack.ooor_public_session_config_mapper do |env|
+    site = env['steam.site']
+    site.metafields[:ooor].compact || {}
   end
 
   class Middleware <  Locomotive::Steam::Middlewares::ThreadSafe
     include Ooor::RackBehaviour
-    include SiteSession
 
     def _call
       set_ooor!(env)
-      session = self.get_session_spec(env['steam.site'])
+      public_session = env['ooor']['ooor_public_session']
+      session = env['ooor']['ooor_session']
       erpify_assigns = {
-                          "ooor_public_model" => Erpify::Liquid::Drops::OoorDefaultModel.new(session),
-                          "ooor_model" => Erpify::Liquid::Drops::OoorDefaultModel.new(session), # TODO user auth outside Wagon
+                          "ooor_public_model" => Erpify::Liquid::Drops::OoorModel.new(public_session),
+                          "ooor_model" => Erpify::Liquid::Drops::OoorModel.new(session),
                         }
       env["steam.liquid_assigns"].merge!(erpify_assigns)
     end
@@ -149,14 +148,13 @@ module Locomotive::Steam
   module Middlewares
 
     class TemplatizedPage
-      include Exodoo::SiteSession
 
       # monkey patches the method to retrieve a potential Ooor content for the given URL path
       def fetch_content_entry(slug)
         if page.content_type_id == "ooor_entries"
           method_or_key = path.split('/')[0].gsub('-', '.')
           lang = env['ooor']['context']['lang'] || 'en_US'
-	        session = Ooor.session_handler.retrieve_session(self.get_session_spec(site))
+          session = env['ooor']['ooor_session']
       	  model = session.const_get(method_or_key, lang)
           param = CGI::unescape(slug)
           model.find_by_permalink(param)        elsif type = content_type_repository.find(page.content_type_id)
