@@ -3,6 +3,7 @@ require 'ooor/rack'
 require 'erpify'
 require 'locomotive/steam'
 require 'rack/reverse_proxy'
+require 'exodoo/shopify'
 
 
 module Exodoo
@@ -13,13 +14,17 @@ module Exodoo
 
 
   ::Ooor::Rack.ooor_session_config_mapper do |env|
+    env['steam.site'] ||= Locomotive::Site.where(handle: ::Rack::Request.new(env).params['steam.site']).first
     site = env['steam.site']
-    site.metafields[:ooor].compact  || {} # TODO Devise auth
+    p "SSSSSSSSSSSSSSSSs", site, site && site.metafields
+    site && site.metafields[:ooor].try(:compact) || {} # TODO Devise auth
   end
-  
+
   ::Ooor::Rack.ooor_public_session_config_mapper do |env|
+    env['steam.site'] ||= Locomotive::Site.where(handle: ::Rack::Request.new(env).params['steam.site']).first
     site = env['steam.site']
-    site.metafields[:ooor].compact || {}
+    p "SSSSSSSSSSSSSSSSs 2", site, site && site.metafields
+    site && site.metafields[:ooor].try(:compact) || {}
   end
 
   class Middleware <  Locomotive::Steam::Middlewares::ThreadSafe

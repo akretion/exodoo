@@ -19,14 +19,7 @@ Gem::Specification.new do |s|
     "LICENSE.txt",
     "README.md"
   ]
-  s.files = [
-    "Gemfile",
-    "LICENSE.txt",
-    "README.md",
-    "VERSION",
-    "lib/exodoo.rb",
-    "exodoo.gemspec"
-  ]
+  s.files = Dir["{lib}/**/*"] + ["LICENSE.txt", "README.md", "README.md"]
   s.homepage = "http://github.com/akretion/exodoo"
   s.licenses = ["MIT"]
   s.require_paths = ["lib"]
