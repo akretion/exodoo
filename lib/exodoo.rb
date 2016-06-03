@@ -14,14 +14,14 @@ module Exodoo
 
 
   ::Ooor::Rack.ooor_session_config_mapper do |env|
-    env['steam.site'] ||= Locomotive::Site.where(handle: ::Rack::Request.new(env).params['steam.site']).first
+    env['steam.site'] ||= Locomotive::Site.where(handle: ::Rack::Request.new(env).params['site_handle']).first
     site = env['steam.site']
     p "SSSSSSSSSSSSSSSSs", site, site && site.metafields
     site && site.metafields[:ooor].try(:compact) || {} # TODO Devise auth
   end
 
   ::Ooor::Rack.ooor_public_session_config_mapper do |env|
-    env['steam.site'] ||= Locomotive::Site.where(handle: ::Rack::Request.new(env).params['steam.site']).first
+    env['steam.site'] ||= Locomotive::Site.where(handle: ::Rack::Request.new(env).params['site_handle']).first
     site = env['steam.site']
     p "SSSSSSSSSSSSSSSSs 2", site, site && site.metafields
     site && site.metafields[:ooor].try(:compact) || {}
