@@ -74,7 +74,7 @@ module Exodoo
     end
   end
 
-  Locomotive::Steam.configure do |config|
+  Locomotive::Steam.configure_extension do |config|
     config.middleware.insert_before Locomotive::Steam::Middlewares::Page, Exodoo::Middleware
     config.middleware.insert_after Exodoo::Middleware, Rack::ReverseProxy do
       (Ooor.default_config[:proxies] || []).each do |k, v|
