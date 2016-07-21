@@ -3,7 +3,19 @@ require 'ooor/rack'
 require 'erpify'
 require 'locomotive/steam'
 require 'rack/reverse_proxy'
-require 'exodoo/shopify'
+
+
+module Locomotive
+  module Steam
+    class Repositories
+      register :adapter do
+        build_adapter(configuration.adapter).tap do
+          require 'exodoo/shopify'
+        end
+      end
+    end
+  end
+end
 
 
 module RackReverseProxy
