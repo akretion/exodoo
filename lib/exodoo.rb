@@ -1,8 +1,11 @@
 require 'ostruct'
+require 'json'
 require 'ooor/rack'
 require 'erpify'
 require 'locomotive/steam'
 require 'rack/reverse_proxy'
+require 'exodoo/shopify/cart'
+require 'exodoo/proxy.rb'
 
 
 module Locomotive
@@ -10,34 +13,13 @@ module Locomotive
     class Repositories
       register :adapter do
         build_adapter(configuration.adapter).tap do
-          require 'exodoo/shopify'
+          require 'exodoo/shopify/i18n_helper'
         end
       end
     end
   end
 end
 
-
-module RackReverseProxy
-  class RoundTrip
-
-    # Make sure proxied requests will include Odoo session_id so it will pass the CSRF token check
-    def initialize_http_header
-      target_request_headers['Cookie'] = "session_id=#{env['ooor']['ooor_session'].web_session[:session_id]}"
-      target_request.initialize_http_header(target_request_headers)
-    end
-    
-    # NOTE: this is EXTREMELY IMPORTANT for security that proxied requests don't pass the session_id to the browser,
-    # this is why we filter out the Set-Cookie header from the response
-    def format_headers(headers)
-      headers.inject({}) do |acc, (key, val)|
-        formated_key = key.split("-").map(&:capitalize).join("-")
-        acc[formated_key] = Array(val) if formated_key != "Set-Cookie"
-        acc
-      end
-    end
-  end
-end
 
 module Exodoo
 
@@ -65,10 +47,12 @@ module Exodoo
       set_ooor!(env)
       public_session = env['ooor']['ooor_public_session']
       session = env['ooor']['ooor_session']
+      req = Rack::Request.new(env)
       erpify_assigns = {
                           "ooor_public_model" => Erpify::Liquid::Drops::OoorModel.new(public_session),
                           "ooor_model" => Erpify::Liquid::Drops::OoorModel.new(session),
-                          "session" => Erpify::Liquid::Drops::Session.new(session)
+                          "session" => Erpify::Liquid::Drops::Session.new(session),
+                          "cart" => req.session['cart']
                         }
       env["steam.liquid_assigns"].merge!(erpify_assigns)
     end
@@ -76,6 +60,7 @@ module Exodoo
 
   Locomotive::Steam.configure_extension do |config|
     config.middleware.insert_before Locomotive::Steam::Middlewares::Page, Exodoo::Middleware
+    config.middleware.insert_after Exodoo::Middleware, Exodoo::Cart
     config.middleware.insert_after Exodoo::Middleware, Rack::ReverseProxy do
       (Ooor.default_config[:proxies] || []).each do |k, v|
         reverse_proxy(k, v)
