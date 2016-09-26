@@ -37,18 +37,21 @@ class Exodoo::Cart
               vendor: "", # TODO product.seller_ids.try(:first).try(:name),
               product_id: product.id,
               gift_card: false,
-              image: "/web/image/product.product/#{product.id}/image_medium", # TODO
+              image: "/web/image/product%2Eproduct/#{product.id}/image_medium", # TODO
               url: "/#{product.class.param_key}/#{handle}", # TODO lang in context
               handle: handle,
               product_title: product.name,
               product_description: product.description_sale || product.description,
-              variant_title: product.name,
-              variant_options: [], # TODO
               requires_shipping: true
       }
+      if product.attribute_value_ids
+        p product.attribute_value_ids
+        data['variant_title'] = (product.attribute_value_ids.map {|i| "#{i.name}"}).join(" - ") # TODO test/fix
+        data['variant_options'] = [] # TODO
+      end
       req.session['cart'] ||= {
         token: "TODO",
-        note: "TODO",
+        note: "",
         attributes: {},
         original_total_price: 42,
         total_price: 42,
