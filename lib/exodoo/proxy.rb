@@ -1,5 +1,16 @@
 require 'rack/reverse_proxy'
 require 'nokogiri'
+require 'rack'
+
+
+module Rack
+  class Lint
+    def verify_content_length(bytes)
+      # do nothing to avoid errors with proxy clipping in dev mode
+    end
+  end
+end
+
 
 module RackReverseProxy
   class RoundTrip
