@@ -56,31 +56,38 @@ module Exodoo
 
   class Middleware < Locomotive::Steam::Middlewares::ThreadSafe
     include Ooor::RackBehaviour
+    include Locomotive::Steam::Middlewares::Helpers
 
-    def _call
-      set_ooor!(env)
-      public_session = env['ooor']['ooor_public_session']
-      session = env['ooor']['ooor_session']
-      req = Rack::Request.new(env)
-      erpify_assigns = {
+      attr_accessor :app, :env
+
+      def initialize(app)
+        @app = app
+      end
+
+      def call(env)
+        threadsafed = dup
+        threadsafed.env = env
+        threadsafed._call
+      end
+
+      def _call
+        if env['PATH_INFO'] =~ /\/products\// && env['warden'] && !env['warden'].authenticated? #env['warden'].user # TODO path not hardcoded
+          return redirect_to "/users/sign_in"
+        end
+        set_ooor!(env)
+        public_session = env['ooor']['ooor_public_session']
+        session = env['ooor']['ooor_session']
+        req = Rack::Request.new(env)
+        erpify_assigns = {
                           "ooor_public_model" => Erpify::Liquid::Drops::OoorModel.new(public_session),
                           "ooor_model" => Erpify::Liquid::Drops::OoorModel.new(session),
-                          "session" => Erpify::Liquid::Drops::Session.new(session),
-                          "cart" => req.session['cart']
-                        }
-      env["steam.liquid_assigns"].merge!(erpify_assigns)
-    end
-  end
-
-  Locomotive::Steam.configure_extension do |config|
-    config.middleware.insert_before Locomotive::Steam::Middlewares::Page, Exodoo::Middleware
-    config.middleware.insert_after Exodoo::Middleware, Exodoo::Cart
-    config.middleware.insert_after Exodoo::Middleware, Rack::ReverseProxy do
-      (Ooor.default_config[:proxies] || []).each do |k, v|
-        reverse_proxy(k, v)
+                          "ooor_session" => Erpify::Liquid::Drops::Session.new(session),
+                          "cart" => req.session['cart'] # TODO REMOVE?
+                         }
+        env["steam.liquid_assigns"].merge!(erpify_assigns)
+        @app.call(env)
       end
     end
-  end
 
 
   module ContentEntryAdapter
@@ -197,6 +204,34 @@ module Locomotive::Steam
           decorate(content_entry_repository.with(type).by_slug(slug))
         else
           nil
+        end
+      end
+
+    end
+  end
+end
+
+
+module Locomotive::Steam
+  module Server
+
+    class << self
+
+      # Strangely the following is required to inject the Exodoo middlewares when using the Rails engine
+      # injecting with Locomotive::Steam.configure works with Wagon but not with the Engine...
+      def to_app
+        stack = configuration.middleware
+        stack.insert_before Locomotive::Steam::Middlewares::Page, Exodoo::Middleware
+        stack.insert_after Exodoo::Middleware, Exodoo::Cart
+        stack.insert_after Exodoo::Middleware, Rack::ReverseProxy do
+          (Ooor.default_config[:proxies] || []).each do |k, v|
+            reverse_proxy(k, v)
+          end
+        end
+
+        Rack::Builder.new do
+          stack.inject(self)
+          run Middlewares::Renderer.new(nil)
         end
       end
 
