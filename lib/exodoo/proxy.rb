@@ -41,7 +41,7 @@ module RackReverseProxy
       target_request.initialize_http_header(target_request_headers)
     end
 
-    # NOTE: this is EXTREMELY IMPORTANT for security that proxied requests don't pass the session_id to the browser,
+    # NOTE: this is EXTREMELY IMPORTANT for security that proxied requests don't pass the session_id back to the browser,
     # this is why we filter out the Set-Cookie header from the response
     def format_headers(headers)
       headers.inject({}) do |acc, (key, val)|
