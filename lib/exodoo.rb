@@ -81,7 +81,7 @@ module Exodoo
     end
 
     def _slug
-      CGI.escape(to_param.gsub(' ', '-'))
+      CGI.escape("#{to_param}-#{id}")
     end
 
     def _permalink
