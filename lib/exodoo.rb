@@ -31,14 +31,28 @@ module Exodoo
   ::Ooor::Rack.ooor_session_config_mapper do |env|
     env['steam.site'] ||= Locomotive::Site.where(handle: ::Rack::Request.new(env).params['site_handle']).first
     site = env['steam.site']
-    site && site.metafields[:ooor].try(:compact) || {} # TODO Devise auth
+    session = site && site.metafields[:ooor].try(:compact) || {}
+    email = env['warden'].try(:user).try(:email)
+    session[:email] = email if email
+    session.reject {|k,v| v.nil? || v.blank?}
   end
 
   ::Ooor::Rack.ooor_public_session_config_mapper do |env|
-    env['steam.site'] ||= Locomotive::Site.where(handle: ::Rack::Request.new(env).params['site_handle']).first
-    site = env['steam.site']
-    site && site.metafields[:ooor].try(:compact) || {}
+    if defined?(::Locomotive::Wagon)
+      # in Wagon use the ooor.yml config directly for simplicity
+      ::Ooor.default_config
+    else
+      env['steam.site'] ||= Locomotive::Site.where(handle: ::Rack::Request.new(env).params['site_handle']).first
+      site = env['steam.site']
+      if site
+        session = site.metafields[:ooor].try(:compact) || {}
+        session.reject {|k,v| v.nil? || v.blank?}
+      else
+        {}
+      end
+    end
   end
+
 
   class Middleware < Locomotive::Steam::Middlewares::ThreadSafe
     include Ooor::RackBehaviour
