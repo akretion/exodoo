@@ -139,12 +139,14 @@ module Locomotive::Steam
 
   class PageRepository
     def template_for(entry, handle = nil)
-      conditions = { templatized: true, target_klass_name: entry.try(:_class_name) }
+      conditions = { templatized: true}#, target_klass_name: entry.try(:_class_name) }
 
       conditions[:handle] = handle if handle
-      unless conditions[:target_klass_name] # AKRETION; may be implementing _class_name on entries is better
-        conditions[:target_klass_name] = "Locomotive::ContentEntryooor_entries"
-      end
+      # TODO filter Odoo templates, but as for now Odoo templatized pages seems to have no class when coming from Wagon FIXME
+#      unless conditions[:target_klass_name] # AKRETION; may be implementing _class_name on entries is better
+#        conditions[:target_klass_name] = "Locomotive::ContentEntryooor_entries"
+#      end
+
       all(conditions).first.tap do |page|
         page.content_entry = entry if page
       end
@@ -194,11 +196,13 @@ module Locomotive::Steam
 
       # monkey patches the method to retrieve a potential Ooor content for the given URL path
       def fetch_content_entry(slug)
-        if page.content_type_id == "ooor_entries"
+        #if page.content_type_id == "ooor_entries"
+        # TODO FIXME in the Engine the page content_type_id is not set when exporting with Wagon!
+        if true
           method_or_key = path.split('/')[0].gsub('-', '.')
           lang = env['ooor']['context']['lang'] || 'en_US'
-          session = env['ooor']['ooor_session']
-      	  model = session.const_get(method_or_key, lang)
+          public_session = env['ooor']['ooor_public_session']
+          model = public_session.const_get(method_or_key, lang)
           param = CGI::unescape(slug)
           model.find_by_permalink(param)        elsif type = content_type_repository.find(page.content_type_id)
           decorate(content_entry_repository.with(type).by_slug(slug))
